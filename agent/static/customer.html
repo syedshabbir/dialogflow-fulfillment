@@ -1,0 +1,118 @@
+<!doctype html>
+<!--
+Copyright 2017, Google, Inc.
+Licensed under the Apache License, Version 2.0 (the 'License');
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+   http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an 'AS IS' BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+-->
+<html>
+  <head>
+    <title>Customer Interface</title>
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      body { font: 13px Helvetica, Arial; }
+      h1 { text-align: center; padding: 20px; }
+      form { background: #000; padding: 3px; position: fixed; bottom: 0; width: 100%; }
+      form input { border: 0; padding: 10px; width: 90%; margin-right: .5%; }
+      form button { width: 9%; background: rgb(130, 224, 255); border: none; padding: 10px; }
+      #messages { list-style-type: none; margin: 10px; padding: 30px; }
+      #messages li { padding: 5px 10px; }
+      #messages li.customer-error { color: red; }
+      #messages li.customer-message { color: blue; }
+      #messages li.customer-message::before { content: "> " }
+      #messages li:nth-child(odd) { background: #eee; }
+    </style>
+  </head>
+  <body>
+    <h1>Customer</h1>
+    <ul id="messages"></ul>
+    <form>
+      <input id="m" autocomplete="off" /><button>Send</button>
+    </form>
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
+    <script>
+      $(function () {
+        var socket = io('/customer');
+
+        // When the form is submitted, send a customer message to the server
+        $('form').submit(function(){
+          var messageText = $('#m').val();
+          $('#messages').append($('<li class="customer-message">').text(messageText));
+		  console.log('display', messageText);
+          socket.emit('customer message', messageText);
+          $('#m').val('');
+          return false;
+        });
+
+        // When we receive a customer message, display it
+        socket.on('customer message', function(msg){
+		//const str = JSON.stringify(fulfillmentMessages);
+		console.log("received message");
+		fulfillmentMessages = JSON.parse(msg);
+		console.log(fulfillmentMessages.length);
+		for (var i = 0, len = fulfillmentMessages.length; i < len; i++) {
+		  //console.log(fulfillmentMessages[i].message === 'text');
+		  if(typeof fulfillmentMessages[i] !== 'undefined' && fulfillmentMessages[i].message === 'text'){
+			if(fulfillmentMessages[i].text.text != null && fulfillmentMessages[i].text.text.length > 0){	
+				$('#messages').append($('<li>').text(fulfillmentMessages[i].text.text));
+			}
+		  }
+		  if(typeof fulfillmentMessages[i] !== 'undefined' && fulfillmentMessages[i].message === 'card'){    
+			/*Iconsole.log(fulfillmentMessages[i].card.title);
+			console.log(fulfillmentMessages[i].card.subtitle);
+			console.log(fulfillmentMessages[i].card.imageUri);
+			console.log(fulfillmentMessages[i].card.buttons[0].text);
+			console.log(fulfillmentMessages[i].card.buttons[0].postback);*/
+			console.log("fulfillmentMessages[i].card.imageUri: " + fulfillmentMessages[i].card.imageUri.length);
+			if(fulfillmentMessages[i].card.imageUri != null && fulfillmentMessages[i].card.imageUri.length > 0){	
+				$('#messages').append($('<li>')
+					.append($('<img>')
+					.attr('src',fulfillmentMessages[i].card.imageUri)));
+			}
+			$('#messages').append($('<li>')
+			   .append($('<a>')
+			   .attr('href',fulfillmentMessages[i].card.buttons[0].postback)
+			   .attr('target','_blank')
+			   .text(fulfillmentMessages[i].card.buttons[0].text)));
+		  }
+		  
+		  if(typeof fulfillmentMessages[i] !== 'undefined' && fulfillmentMessages[i].message === 'quickReplies'){    
+			$('#messages').append($('<li>').text('suggestions...'));
+			var arr = Object.values(fulfillmentMessages[i].quickReplies.quickReplies);
+			for (var x = 0, len = arr.length; x < len; x++) {
+				$('#messages').append($('<li>').text(arr[x]));
+			}
+		  }
+		
+		  
+		}
+		/*
+		[{"platform":"PLATFORM_UNSPECIFIED","text":{"text":["You entered asthma"]},"message":"text"},
+		 {"platform":"PLATFORM_UNSPECIFIED",
+		     "quickReplies":{"quickReplies":["Acute asthma exacerbat...","Asthma in children","Asthma in adults"],"title":""},
+			 "message":"quickReplies"}]*/
+			//console.log('display', msg);
+			//$('#messages').append($('<li>').append(msg));
+        });
+
+        // When we receive a system error, display it
+        socket.on('system error', function(error) {
+          var errorText = error.type + ' - ' + error.message;
+          console.log(errorText);
+          $('#messages').append($('<li class="customer-error">').text(errorText));
+        });
+      });
+    </script>
+  </body>
+</html>
+
+	
